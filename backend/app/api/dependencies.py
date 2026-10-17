@@ -23,7 +23,11 @@ def get_current_user(
 ) -> User:
     # Swagger/API clients ke Bearer token ko priority do;
     # browser requests mein HttpOnly cookie use karo.
-    token = bearer_token or request.cookies.get("access_token")
+    token = (
+    bearer_token
+    if bearer_token and bearer_token.lower() != "undefined"
+    else request.cookies.get("access_token")
+)
 
     if not token:
         raise HTTPException(
