@@ -130,8 +130,7 @@ def login_user(
         path="/",
 
     )
-    print("LOGIN COOKIE DEBUG:", response.headers.get("set-cookie"))
-    print("LOGIN RESPONSE HEADERS:", dict(response.headers))
+ 
     return {"message": "Login successful"}
 
 

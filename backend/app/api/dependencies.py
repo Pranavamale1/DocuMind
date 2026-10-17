@@ -44,12 +44,22 @@ def get_current_user(
 
         parsed_user_id = int(user_id)
 
-    except (jwt.InvalidTokenError, TypeError, ValueError):
+    except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired access token",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Access token expired",
         )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token",
+        )
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in token",
+        )
+
 
     user = db.get(User, parsed_user_id)
 
