@@ -7,6 +7,10 @@ import {
   getDocuments,
   deleteDocument,
   searchDocuments,
+  createChat,
+  getChats,
+  getChat,
+  saveChatMessage,
 } from "./services/api";
 import {
   BrainCircuit,
@@ -61,6 +65,9 @@ function App() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
+  const [chats, setChats] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
+  const [chatsLoading, setChatsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -125,10 +132,57 @@ const attachmentInputRef = useRef(null);
   useEffect(() => {
     if (!user) {
       setDocuments([]);
+      setChats([]);
+      setActiveChatId(null);
+      setChatHistory([]);
       return;
     }
     refreshDocuments();
+    refreshChats();
   }, [user]);
+
+  const refreshChats = async () => {
+    setChatsLoading(true);
+    try {
+      const data = await getChats();
+      const items = Array.isArray(data) ? data : Array.isArray(data?.chats) ? data.chats : [];
+      setChats(items);
+    } catch (error) {
+      console.error("Could not load recent chats:", error);
+      setChatError(error.response?.data?.detail || "Could not load your recent chats.");
+    } finally {
+      setChatsLoading(false);
+    }
+  };
+
+  const startNewChat = () => {
+    setActiveChatId(null);
+    setChatHistory([]);
+    setChatAnswer(null);
+    setChatError("");
+    setQuestion("");
+    navigate("assistant");
+  };
+
+  const openChat = async (chat) => {
+    setChatLoading(true);
+    setChatError("");
+    setChatAnswer(null);
+    try {
+      const data = await getChat(chat.id);
+      setActiveChatId(data.id);
+      setChatHistory(Array.isArray(data.messages) ? data.messages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+      })) : []);
+      navigate("assistant");
+    } catch (error) {
+      setChatError(error.response?.data?.detail || "Could not open this chat.");
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -222,24 +276,31 @@ const handleUpload = async (file) => {
     setChatLoading(true);
     setChatError("");
     setChatAnswer(null);
-    const historyForRequest = chatHistory;
-    setChatHistory((previous) =>
-      [...previous, { role: "user", content: currentQuestion }].slice(-12),
-    );
+    const historyForRequest = chatHistory.map(({ role, content }) => ({ role, content }));
     setQuestion("");
 
     try {
+      let chatId = activeChatId;
+      if (!chatId) {
+        const created = await createChat(currentQuestion.slice(0, 80) || "New chat");
+        chatId = created.id;
+        setActiveChatId(chatId);
+        setChats((previous) => [created, ...previous.filter((item) => item.id !== created.id)]);
+      }
+
+      await saveChatMessage(chatId, "user", currentQuestion);
+      setChatHistory((previous) =>
+        [...previous, { role: "user", content: currentQuestion }].slice(-12),
+      );
+
       const result = await searchDocuments(currentQuestion, historyForRequest);
+      const answer = result.answer || "I couldn't generate an answer.";
+      await saveChatMessage(chatId, "assistant", answer);
       setChatAnswer(result);
       setChatHistory((previous) =>
-        [
-          ...previous,
-          {
-            role: "assistant",
-            content: result.answer || "I couldn't generate an answer.",
-          },
-        ].slice(-12),
+        [...previous, { role: "assistant", content: answer }].slice(-12),
       );
+      await refreshChats();
     } catch (error) {
       setChatError(
         error.response?.data?.detail ||
@@ -305,6 +366,41 @@ const handleUpload = async (file) => {
             </button>
           ))}
         </nav>
+
+        <section className="recent-chats-section" aria-label="Recent chats">
+          <div className="section-heading recent-chats-heading">
+            <p className="nav-label">RECENT CHATS</p>
+            <button
+              className="icon-button recent-chat-new"
+              type="button"
+              aria-label="Start a new chat"
+              title="New chat"
+              onClick={startNewChat}
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+          {chatsLoading ? (
+            <p className="recent-chats-empty">Loading chats…</p>
+          ) : chats.length === 0 ? (
+            <p className="recent-chats-empty">No saved chats yet</p>
+          ) : (
+            <nav className="recent-chats-list" aria-label="Saved conversations">
+              {chats.slice(0, 8).map((chat) => (
+                <button
+                  key={chat.id}
+                  type="button"
+                  className={`nav-item recent-chat-item ${activeChatId === chat.id ? "active" : ""}`}
+                  title={chat.title || "Untitled chat"}
+                  onClick={() => openChat(chat)}
+                >
+                  <MessageCircle size={17} />
+                  <span>{chat.title || "Untitled chat"}</span>
+                </button>
+              ))}
+            </nav>
+          )}
+        </section>
 
         <div className="sidebar-bottom">
           <button
@@ -381,7 +477,7 @@ const handleUpload = async (file) => {
                     <span className="assistant-status-dot" />
                     <div><strong>DocuMind Assistant</strong><small>Answers grounded in your uploaded documents</small></div>
                   </div>
-                  <button className="text-button" onClick={() => { setChatHistory([]); setChatAnswer(null); setChatError(""); }}>
+                  <button className="text-button" onClick={startNewChat}>
                     <Plus size={15} /> New chat
                   </button>
                 </div>
@@ -518,11 +614,7 @@ const handleUpload = async (file) => {
               </div>
               <button
                 className="text-button"
-                onClick={() => {
-                  setChatHistory([]);
-                  setChatAnswer(null);
-                  setChatError("");
-                }}
+                onClick={startNewChat}
               >
                 New chat <Plus size={15} />
               </button>
