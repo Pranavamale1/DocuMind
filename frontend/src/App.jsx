@@ -31,6 +31,10 @@ import {
   FileUp,
   Image as ImageIcon,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import "./App.css";
 
@@ -70,6 +74,8 @@ function App() {
   const [chatsLoading, setChatsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
+  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
 
   const chatScrollRef = useRef(null);
  const pdfInputRef = useRef(null);
@@ -322,7 +328,7 @@ const handleUpload = async (file) => {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${leftSidebarCollapsed ? "left-sidebar-collapsed" : ""} ${rightSidebarCollapsed ? "right-sidebar-collapsed" : ""}`}>
       {mobileNavOpen && (
         <button
           className="mobile-scrim"
@@ -330,7 +336,7 @@ const handleUpload = async (file) => {
           onClick={() => setMobileNavOpen(false)}
         />
       )}
-      <aside className={`sidebar ${mobileNavOpen ? "sidebar-open" : ""}`}>
+      <aside className={`sidebar ${mobileNavOpen ? "sidebar-open" : ""} ${leftSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
         <button
           className="brand"
           onClick={() => navigate("dashboard")}
@@ -456,6 +462,26 @@ const handleUpload = async (file) => {
           </div>
           <div className="topbar-actions">
             <button
+              className="icon-button desktop-sidebar-toggle"
+              type="button"
+              aria-label={leftSidebarCollapsed ? "Expand left sidebar" : "Collapse left sidebar"}
+              title={leftSidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+              onClick={() => setLeftSidebarCollapsed((collapsed) => !collapsed)}
+            >
+              {leftSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+            {page === "dashboard" && (
+              <button
+                className="icon-button desktop-sidebar-toggle"
+                type="button"
+                aria-label={rightSidebarCollapsed ? "Show recent documents" : "Hide recent documents"}
+                title={rightSidebarCollapsed ? "Show recent documents" : "Hide recent documents"}
+                onClick={() => setRightSidebarCollapsed((collapsed) => !collapsed)}
+              >
+                {rightSidebarCollapsed ? <PanelRightOpen size={18} /> : <PanelRightClose size={18} />}
+              </button>
+            )}
+            <button
               className="icon-button"
               aria-label="Search documents"
               onClick={() => navigate("documents")}
@@ -515,7 +541,7 @@ const handleUpload = async (file) => {
                 </form>
                 <p className="privacy-note">Review important answers against the cited source documents.</p>
               </section>
-              <aside className="dashboard-recent section-card">
+              {!rightSidebarCollapsed && <aside className="dashboard-recent section-card">
                 <div className="eyebrow">YOUR AI KNOWLEDGE SPACE</div>
                 <div className="section-heading dashboard-recent-heading"><div><h2>Recent documents</h2></div></div>
                 <button className="primary-button dashboard-upload-button" onClick={() => pdfInputRef.current?.click()} disabled={uploading}><Plus size={16} /> {uploading ? "Uploading…" : "Add a document"}</button>
@@ -524,7 +550,7 @@ const handleUpload = async (file) => {
                 {uploadError && <p className="error-message" role="alert">{uploadError}</p>}
                 <DocumentList documents={documents.slice(0, 4)} loading={documentsLoading} error={documentsError} onDelete={handleDelete} deletingId={deletingId} onUpload={() => pdfInputRef.current?.click()} />
                 <button className="text-button dashboard-view-all" onClick={() => navigate("documents")}>View all documents →</button>
-              </aside>
+              </aside>}
             </div>
             <input ref={pdfInputRef} className="visually-hidden" type="file" accept=".pdf,application/pdf" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleUpload(file); e.target.value = ""; }} />
           </section>
