@@ -2,7 +2,8 @@
 from contextlib import asynccontextmanager
 from app.api.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.api.chats import router as chats_router
+from app.models.chat import Chat, ChatMessage
 from fastapi import FastAPI
 
 from app.core.config import settings
@@ -38,6 +39,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(documents_router)
+app.include_router(chats_router)
 
 @app.get("/")
 def root():

@@ -70,4 +70,32 @@ export const searchDocuments = async (question, chatHistory = []) => {
   return response.data
 }
 
+export const createChat = async (title = "New Chat") => {
+  const response = await api.post("/chats", { title })
+  return response.data
+}
+
+export const getChats = async () => {
+  const response = await api.get("/chats")
+  return response.data
+}
+
+export const getChat = async (chatId) => {
+  const response = await api.get(`/chats/${chatId}`)
+  return response.data
+}
+
+export const saveChatMessage = async (chatId, role, content) => {
+  const response = await api.post(`/chats/${chatId}/messages`, {
+    role,
+    content,
+  })
+  return response.data
+}
+
+export const deleteChat = async (chatId) => {
+  await api.delete(`/chats/${chatId}`)
+}
+
+
 export default api

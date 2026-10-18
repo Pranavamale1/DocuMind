@@ -4,7 +4,7 @@ from app.db.base import Base
 from app.db.database import engine
 from app.models.document import Document
 from app.models.document_chunk import DocumentChunk
-
+from app.models.chat import Chat, ChatMessage
 # User model import karna zaroori hai,
 # taaki SQLAlchemy uski table definition register kare.
 from app.models.user import User
