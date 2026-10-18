@@ -47,6 +47,7 @@ function App() {
   });
 
   const [documents, setDocuments] = useState([]);
+  const [documentQuery, setDocumentQuery] = useState("");
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
@@ -372,122 +373,64 @@ const handleUpload = async (file) => {
         </header>
 
         {page === "dashboard" && (
-          <section className="page-scroll dashboard-page">
-            <div className="welcome-card">
-              <div>
-                <span className="eyebrow">
-                  <Sparkles size={14} /> YOUR AI KNOWLEDGE SPACE
-                </span>
-                <h2>
-                  Make your documents
-                  <br />
-                  work smarter for you.
-                </h2>
-                <p>
-                  Upload your PDFs, find the details that matter, and get
-                  answers grounded in your knowledge base.
-                </p>
-                <div className="welcome-actions">
-                  <button
-                    className="primary-button"
-                    onClick={() => pdfInputRef.current?.click()}
-                    disabled={uploading}
-                  >
-                    <Plus size={17} /> Add a document
-                  </button>
-                  <button
-                    className="secondary-button"
-                    onClick={handleLogout}
-                  >
-                   Signout
+          <section className="page-scroll dashboard-page figma-dashboard">
+            <div className="dashboard-layout">
+              <section className="assistant-workspace dashboard-assistant">
+                <div className="assistant-toolbar">
+                  <div>
+                    <span className="assistant-status-dot" />
+                    <div><strong>DocuMind Assistant</strong><small>Answers grounded in your uploaded documents</small></div>
+                  </div>
+                  <button className="text-button" onClick={() => { setChatHistory([]); setChatAnswer(null); setChatError(""); }}>
+                    <Plus size={15} /> New chat
                   </button>
                 </div>
-              </div>
-              <div className="welcome-art">
-                <div className="art-circle">
-                  <BrainCircuit size={68} />
+                <div className="chat-messages" ref={chatScrollRef}>
+                  {chatHistory.length === 0 && !chatLoading && (
+                    <div className="assistant-empty">
+                      <span className="assistant-empty-icon"><Sparkles size={25} /></span>
+                      <h2>Good to see you, {(user.name || "there").split(" ")[0]}</h2>
+                      <p>Upload your PDFs, find the details that matter, and get answers grounded in your knowledge base.</p>
+                      <div className="prompt-suggestions">
+                        <button onClick={() => setQuestion("Summarize my uploaded documents")}>Summarize my documents</button>
+                        <button onClick={() => setQuestion("Find the key points in my documents")}>Find key points</button>
+                        <button onClick={() => setQuestion("What are the most important findings?")}>Important findings</button>
+                      </div>
+                    </div>
+                  )}
+                  {chatHistory.map((message, index) => (
+                    <div key={`${index}-${message.role}`} className={`chat-message ${message.role}`}>
+                      {message.role === "assistant" && <span className="message-avatar"><BrainCircuit size={17} /></span>}
+                      <div className="message-content"><span className="message-label">{message.role === "user" ? "You" : "DocuMind"}</span>
+                        <div className="message-bubble">{message.content}</div>
+                        {message.role === "assistant" && index === chatHistory.length - 1 && chatAnswer?.results?.length > 0 && (
+                          <div className="message-sources"><strong>Sources</strong>{chatAnswer.results.map((result, i) => <div key={i}><FileText size={14} /><span>{result.source_filename || result.filename || `Source ${i + 1}`}</span></div>)}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {chatLoading && <div className="chat-loading"><Sparkles size={17} /> DocuMind is thinking…</div>}
                 </div>
-                <span className="art-file">
-                  <FileText size={24} />
-                </span>
-                <span className="art-spark">✦</span>
-              </div>
+                {chatError && <p className="error-message composer-error" role="alert">{chatError}</p>}
+                <form className="composer" onSubmit={sendQuestion}>
+                  <button className="attach-button" type="button" title="Upload a PDF" aria-label="Upload a PDF" onClick={() => pdfInputRef.current?.click()}><Paperclip size={18} /></button>
+                  <textarea value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendQuestion(e); } }} placeholder="Ask a question about your documents..." aria-label="Ask DocuMind a question" rows={1} />
+                  <button className="send-button" type="submit" aria-label="Send question" disabled={chatLoading || !question.trim()}><ArrowUp size={20} /></button>
+                </form>
+                <p className="privacy-note">Review important answers against the cited source documents.</p>
+              </section>
+              <aside className="dashboard-recent section-card">
+                <div className="eyebrow">YOUR AI KNOWLEDGE SPACE</div>
+                <div className="section-heading dashboard-recent-heading"><div><h2>Recent documents</h2></div></div>
+                <button className="primary-button dashboard-upload-button" onClick={() => pdfInputRef.current?.click()} disabled={uploading}><Plus size={16} /> {uploading ? "Uploading…" : "Add a document"}</button>
+                <div className="dashboard-mini-stats"><span>Total documents <strong>{documents.length}</strong></span><span>Messages this session <strong>{Math.ceil(chatHistory.length / 2)}</strong></span></div>
+                {uploadMessage && <p className="success-message" role="status">{uploadMessage}</p>}
+                {uploadError && <p className="error-message" role="alert">{uploadError}</p>}
+                <DocumentList documents={documents.slice(0, 4)} loading={documentsLoading} error={documentsError} onDelete={handleDelete} deletingId={deletingId} onUpload={() => pdfInputRef.current?.click()} />
+                <button className="text-button dashboard-view-all" onClick={() => navigate("documents")}>View all documents →</button>
+              </aside>
             </div>
-
-            <div className="stats-grid">
-              <article className="stat-card">
-                <span className="stat-icon purple">
-                  <Files size={20} />
-                </span>
-                <div>
-                  <p>Total documents</p>
-                  <h3>{documents.length}</h3>
-                </div>
-              </article>
-              <article className="stat-card">
-                <span className="stat-icon blue">
-                  <MessageSquareText size={20} />
-                </span>
-                <div>
-                  <p>Messages this session</p>
-                  <h3>{Math.ceil(chatHistory.length / 2)}</h3>
-                </div>
-              </article>
-              <article className="stat-card">
-                <span className="stat-icon green">
-                  <BrainCircuit size={20} />
-                </span>
-                <div>
-                  <p>Search technology</p>
-                  <h3>RAG</h3>
-                </div>
-              </article>
-            </div>
-
-            <section className="section-card">
-              <div className="section-heading">
-                <div>
-                  <h2>Recent documents</h2>
-                  <p>Pick up where you left off.</p>
-                </div>
-                <button
-                  className="text-button"
-                  onClick={() => navigate("documents")}
-                >
-                  View all <span>→</span>
-                </button>
-              </div>
-              <DocumentList
-                documents={documents.slice(0, 4)}
-                loading={documentsLoading}
-                error={documentsError}
-                onDelete={handleDelete}
-                deletingId={deletingId}
-                onUpload={() => pdfInputRef.current?.click()}
-              />
-            </section>
-            <input
-              ref={pdfInputRef}
-              className="visually-hidden"
-              type="file"
-              accept=".pdf,application/pdf"
-              disabled={uploading}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleUpload(file);
-                e.target.value = "";
-              }}
-            />
-            {uploadMessage && (
-              <p className="success-message" role="status">
-                {uploadMessage}
-              </p>
-            )}
-            {uploadError && (
-              <p className="error-message" role="alert">
-                {uploadError}
-              </p>
-            )}
+            <input ref={pdfInputRef} className="visually-hidden" type="file" accept=".pdf,application/pdf" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleUpload(file); e.target.value = ""; }} />
           </section>
         )}
 
@@ -499,7 +442,8 @@ const handleUpload = async (file) => {
                 <input
                   aria-label="Search documents"
                   placeholder="Search your documents…"
-                  onChange={(e) => setDocuments((current) => current)}
+                  value={documentQuery}
+                  onChange={(e) => setDocumentQuery(e.target.value)}
                 />
               </div>
               <button
@@ -551,7 +495,7 @@ const handleUpload = async (file) => {
                 </div>
               </div>
               <DocumentList
-                documents={documents}
+                documents={documents.filter((doc) => (doc.filename || "").toLowerCase().includes(documentQuery.toLowerCase()))}
                 loading={documentsLoading}
                 error={documentsError}
                 onDelete={handleDelete}
